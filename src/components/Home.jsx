@@ -10,9 +10,9 @@ const Home = () => {
     axios.get('http://localhost:8080/api/friends/dm', {headers: {Authorization: " Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ3anNhb3MyMDgxQG5hdmVyLmNvbSIsImV4cCI6MTcwOTAwMDc5MywiaWF0IjoxNzA2NDA4NzkzfQ.6QDpfmBeUZ6xSOTNWexdeV0EgJVaMcaEPbAMpad-pDM" }})
     .then((response) => {
       console.log(response);
-      console.log(response.data);
+      console.log(response.data.data);
 
-      setUserInfos(response.data);
+      setUserInfos(response.data.data);
 
     }).catch((error) => {
       console.log(error);

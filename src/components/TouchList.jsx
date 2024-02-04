@@ -9,6 +9,8 @@ import { Card } from "react-bootstrap";
 const TouchList = ({users}) =>{
   const navigate = useNavigate();
 
+  console.log(users)
+
 
   return (
     <div>
