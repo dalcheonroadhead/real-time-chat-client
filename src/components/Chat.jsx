@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import TypeIt from 'typeit-react';
 import Stack from 'react-bootstrap/Stack';
 import * as StompJs from '@stomp/stompjs';
@@ -9,6 +9,7 @@ import "../Chat.css"
 
 let stompClient;
 const TESTUSER = 1;
+const roomId = 1;
 
 const Chat = (props) => {
   const location = useLocation();
@@ -16,9 +17,11 @@ const Chat = (props) => {
   
   // 모든 채팅 메세지 저장
   const [messages, setMessages] = useState([]);
-  // 현재 ChatBot이 타이핑하는 메세지를 추적 
+  // 현재 다른 사람이 타이핑하는 메세지를 추적 
   const [currentTypingId, setCurrentTypingId] = useState(null);
-  
+  // 현재 사용자가 업로드한 이미지 
+  const [curImg, setImgFile] = useState("");
+  const imgRef = useRef();
 
   const handleSendMessage = (message) => {
     console.log(message);
@@ -62,16 +65,15 @@ const Chat = (props) => {
   //--------------------------웹 소켓 파트 입니다. ------------------------------
 
 
-  const roomId = userInfo.roomId;
   
   const clientHeader = {Authorization: " Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ3anNhb3MyMDgxQG5hdmVyLmNvbSIsImV4cCI6MTcwOTAwMDc5MywiaWF0IjoxNzA2NDA4NzkzfQ.6QDpfmBeUZ6xSOTNWexdeV0EgJVaMcaEPbAMpad-pDM"};
   
   const connect =  (event) => {
     var sockJS = new SockJS("http://localhost:8080/ws-stomp");
     stompClient = Stomp.over(sockJS);
+    console.log(stompClient)
   
     stompClient.connect(clientHeader,onConnected, onError);
-
 
   }
   
@@ -79,7 +81,7 @@ const Chat = (props) => {
   function onConnected() {
       console.log("채팅 앱 첫 연결 실행!")
       stompClient.subscribe("/sub/chat/room/"+ roomId,onMessageReceivedFromSocket ,{userId: userInfo.userId, chatRoomType: "ONE" } )
-      stompClient.send("/pub/chat/enterUser",clientHeader,JSON.stringify({meesageType: "ENTER", content: userInfo.name + "님 환영합니다!", userId: TESTUSER, chatRoomId: userInfo.roomId }))
+      stompClient.send("/pub/chat/enterUser",clientHeader,JSON.stringify({meesageType: "ENTER", content: userInfo.name + "님 환영합니다!", userId: TESTUSER, chatRoomId: roomId }))
   }
 
 
@@ -113,7 +115,8 @@ const Chat = (props) => {
       isUser: chat.userId === TESTUSER? true : false,
       text: chat.content,
       isTyping: chat.userId === TESTUSER? false : true,
-      id: Date.now()
+      id: Date.now(),
+      imgCode: chat.imgCode
     }
 
     /*
@@ -145,7 +148,7 @@ const Chat = (props) => {
 
     return () => stompClient.disconnect(function(){
       alert("see you next Time!!")
-    }, {userId: userInfo.userId, chatRoomId: userInfo.roomId }, {userId: userInfo.userId, chatRoomId: userInfo.roomId })
+    })
   },[])
 
 
@@ -163,6 +166,7 @@ const Chat = (props) => {
           onEndTyping={handleEndTyping}
         />
         {/* 메세지가 쳐지는 INPUT FORM onSendMessage => 새로운 메세지가 전송될 때 호출하는 함수  */}
+        <ImageUploader userInfo = {userInfo}/>
         <MessageForm onSendMessage={handleSendMessage} userInfo = {userInfo} />
       </div>
     </div>
@@ -189,6 +193,7 @@ const Message = ({
   isUser,
   isTyping,
   id,
+  imgCode,
   onEndTyping,
   currentTypingId
 }) => {
@@ -196,20 +201,31 @@ const Message = ({
     //메세지 타입에 따라 클래스 이름이 달라지도록! 
     <div className={isUser ? "user-message" : "ai-message"}>
       {/* isTyping = 애니메이션을 할까말까 boolean값, curretTypingId는 제일 최근에 쳤던 메세지 ID */}
-      {isTyping && currentTypingId === id ? (<p>
-            <b>친구</b>:<TypeIt options={{
-              speed: 50,
-              waitUntilVisible: true,
-              afterComplete: () => onEndTyping(id)
-            }}>{text}</TypeIt> 
-          </p>
+      {isTyping && currentTypingId === id ? (
+        imgCode !== null? (<p>
+          <img
+          src= {imgCode}
+          height="200"
+          wieght="200"
+          />
+        </p>) : (<p>
+          <b>친구</b>:<TypeIt options={{
+            speed: 50,
+            waitUntilVisible: true,
+            afterComplete: () => onEndTyping(id)
+          }}>{text}</TypeIt> 
+        </p>)
 
-      ) : (
-        <p>
-          {/* 그냥 사용자라면 USER로 쳐지도록 함. */}
-          <b>{isUser ? "당신" : "친구"}</b>: {text}
-        </p>
-      )}
+      ) : (imgCode !== null? (<p>
+        <img
+        src= {imgCode}
+        height="200"
+        wieght="200"
+        />
+      </p>) : (  <p>
+        {/* 그냥 사용자라면 USER로 쳐지도록 함. */}
+        <b>{isUser ? "당신" : "친구"}</b>: {text}
+      </p>))}
     </div>
   );
 };
@@ -245,6 +261,63 @@ const MessageForm = ({ onSendMessage, userInfo }) => {
   );
 
 }
+
+// 이미지 보내는 로직
+const ImageUploader = ({userInfo}) => {
+
+  const [baseImage, setBaseImage] = useState("");
+
+  const handleImageChange = async (e) => {
+        console.log(e.target.files);
+        const file = e.target.files[0];
+        const base64 = await convertBase64(file);
+
+        //console.log(base64);
+
+        var chatMessage = {
+          "chatRoomId": userInfo.roomId,
+          "userId": TESTUSER,
+          "content": null,
+          "messageType": "TALK",
+          "imgCode": base64
+        }
+
+
+        console.log(chatMessage)
+
+        stompClient.send("/pub/chat/sendMessage", {},JSON.stringify(chatMessage));
+
+
+  };
+
+  const convertBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+
+      const fileReader = new FileReader();
+      fileReader.readAsDataURL(file);
+
+      fileReader.onload = () => {
+        resolve(fileReader.result);
+      };
+
+      fileReader.onerror = (error) => {
+        reject(error);
+      }
+
+    })
+  }
+
+
+
+  return(
+    <div style={{display: "inline"}}>
+      <input type='file' onChange={handleImageChange}/>
+      <img src={baseImage} height="200px"/>
+    </div>
+  )
+
+}
+
 
 
 export default Chat;
