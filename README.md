@@ -1,5 +1,11 @@
 # STOMP Web Socket Test 용 클라이언트 견본 (React) 
 
+### 시연 영상
+https://github.com/dalcheonroadhead/RealTimeChatClient/assets/102154788/846986f0-0800-4c4f-88ea-a54aa6f3d906
+
+
+
+
  ### 0. 왜 만들었는가
 
 STOMP로 만든 Web Socket은 테스트하기가 어렵다. 왜냐하면 POST MAN이나 기타 확장 테스트 프로그램에서 STOMP 웹 소켓 통신을 지원하지 않기 때문이다. 따라서 백앤드 개발자가 서버를 다 만들어도, 이게 제대로 동작하는 것인지 가늠하기가 어렵다. 그래서 테스트 용으로 만들었고, VS-Code를 깔아본 적 없는 분들도 사용할 수 있게 설명을 곁드리겠다. 
